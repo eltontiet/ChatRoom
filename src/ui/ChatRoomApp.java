@@ -21,6 +21,7 @@ public class ChatRoomApp implements Observer {
 
     public static final int PORT = 45213;
     private static final int RETRIES = 5;
+    public static final String USER_JOIN_MESSAGE = "A user has joined the chat";
 
     String username;
     User user;
@@ -71,7 +72,7 @@ public class ChatRoomApp implements Observer {
             case "/quit":
                 networkRoom.setQuit(true);
                 quit = true;
-                System.out.println("Successfully quit the app");
+                System.out.println("Quitting the app...");
                 break;
             default:
                 System.out.println("Command could not be recognized, ");

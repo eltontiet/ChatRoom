@@ -38,6 +38,7 @@ public class HostNetwork extends Network {
             }
             try {
                 sockets.add(ss.accept());
+                // TODO: sendMessage(new Message("", ChatRoomApp.USER_JOIN_MESSAGE));
             } catch (Exception e) {
                 //
             }
