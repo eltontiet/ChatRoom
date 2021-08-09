@@ -74,6 +74,7 @@ public class HostNetwork extends Network {
 
     @Override
     public void sendMessage(Message message) {
+        ArrayList<Socket> failed = new ArrayList<>();
         for (Socket s: sockets) {
             try {
                 DataOutputStream dos = new DataOutputStream(s.getOutputStream());
@@ -82,8 +83,13 @@ public class HostNetwork extends Network {
                 dos.flush();
 
             } catch (IOException e) {
-                e.printStackTrace();
+                failed.add(s);
+                System.err.println("A user has disconnected");
             }
+        }
+
+        for (Socket s: failed) {
+            sockets.remove(s);
         }
     }
 }

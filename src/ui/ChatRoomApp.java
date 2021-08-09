@@ -106,6 +106,8 @@ public class ChatRoomApp implements Observer {
 
         SocketAddress address = new InetSocketAddress(ip, PORT);
 
+        boolean failed = true;
+
         for (int i = 0; i < RETRIES; i++) {
             try {
                 Socket socket = new Socket();
@@ -119,6 +121,7 @@ public class ChatRoomApp implements Observer {
 
                 new Thread(networkRoom).start();
                 System.out.println("Connected Successfully");
+                failed = false;
                 break;
 
             } catch (Exception e) {
@@ -126,9 +129,11 @@ public class ChatRoomApp implements Observer {
             }
         }
 
-        System.err.println("Could not connect");
+        if (failed) {
+            System.err.println("Could not connect");
 
-        getType();
+            getType();
+        }
     }
 
     // EFFECTS: hosts a chat room
