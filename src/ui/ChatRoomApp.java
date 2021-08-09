@@ -4,8 +4,9 @@ import com.dosse.upnp.UPnP;
 import model.ChatRoom;
 import model.Message;
 import model.User;
-import networking.ClientRoom;
-import networking.HostRoom;
+import networking.ClientNetwork;
+import networking.HostNetwork;
+import networking.Network;
 
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -26,18 +27,61 @@ public class ChatRoomApp implements Observer {
     Scanner input;
     ArrayList<ChatRoom> chatRooms; // Could be used in the future to have multiple chat rooms.
     ChatRoom currentChatRoom;
+    Network networkRoom;
+    boolean isHost = false;
+    boolean quit = false;
 
     // MODIFIES: this
     // EFFECTS: runs the chat room app
     public ChatRoomApp() {
         init();
 
-        System.out.println("What is your username? \n");
+        System.out.println("What is your username?");
         username = getInput();
 
         user = new User(username);
 
         getType();
+
+        while (!quit) {
+            chat();
+        }
+    }
+
+    // EFFECTS: allows the user to chat in the room
+    private void chat() {
+        String command = getInput();
+        if (command.length() > 0) {
+            if (command.charAt(0) == '/') {
+                checkCommands(command);
+            } else {
+                networkRoom.sendMessage(new Message(username, command));
+            }
+            System.out.println();
+        }
+    }
+
+    // EFFECTS: allows the user to input a command
+    private void checkCommands(String command) {
+        command = command.toLowerCase();
+        switch(command) {
+            case "/help":
+                printHelp();
+                break;
+            case "/quit":
+                networkRoom.setQuit(true);
+                quit = true;
+                System.out.println("Successfully quit the app");
+                break;
+            default:
+                System.out.println("Command could not be recognized, ");
+        }
+    }
+
+    // EFFECTS: prints a help screen that displays all the commands
+    private void printHelp() {
+        System.out.println("/quit to quit");
+        System.out.println("/help for help");
     }
 
     // EFFECTS: asks user to host or join a chat room
@@ -66,8 +110,15 @@ public class ChatRoomApp implements Observer {
             try {
                 Socket socket = new Socket();
                 socket.connect(address);
+
                 ChatRoom room = new ChatRoom();
-                new Thread(new ClientRoom(room, socket)).start();
+                networkRoom = new ClientNetwork(room, socket);
+                currentChatRoom = room;
+                chatRooms.add(room);
+                joinRoom(room);
+
+                new Thread(networkRoom).start();
+                System.out.println("Connected Successfully");
                 break;
 
             } catch (Exception e) {
@@ -75,6 +126,9 @@ public class ChatRoomApp implements Observer {
             }
         }
 
+        System.err.println("Could not connect");
+
+        getType();
     }
 
     // EFFECTS: hosts a chat room
@@ -82,6 +136,14 @@ public class ChatRoomApp implements Observer {
         if (UPnP.isUPnPAvailable()) {
             if (UPnP.isMappedTCP(PORT)) {
                 System.err.println("Port is in use");
+                System.out.println("Would you like to try closing the port? (y/n)");
+                String command = getInput().toLowerCase();
+                if (command.equals("y")) {
+                    UPnP.closePortTCP(PORT);
+                    host();
+                } else {
+                    getType();
+                }
             } else if (UPnP.openPortTCP(PORT)) {
                 System.out.println("Opened port!");
 
@@ -89,13 +151,18 @@ public class ChatRoomApp implements Observer {
                 joinRoom(room);
                 chatRooms.add(room);
                 currentChatRoom = room;
-                new Thread(new HostRoom(room)).start();
+
+                networkRoom = new HostNetwork(room);
+                new Thread(networkRoom).start();
+                isHost = true;
 
             } else {
                 System.err.println("Port could not be opened");
+                getType();
             }
         } else {
             System.err.println("UPnP is disabled");
+            getType();
         }
     }
 
@@ -103,6 +170,7 @@ public class ChatRoomApp implements Observer {
     // EFFECTS: initializes the input scanner
     private void init() {
         input = new Scanner(System.in);
+        chatRooms = new ArrayList<>();
     }
 
     // EFFECTS: returns the next line in the scanner
@@ -114,13 +182,15 @@ public class ChatRoomApp implements Observer {
     // EFFECTS: returns a message based on the new update
     @Override
     public void update(Observable o, Object obj) {
-        if (obj.getClass().toString().equals("Message")) {
+        if (obj.getClass() == Message.class) {
             Message message = (Message) obj;
-            System.out.println(message.getSender());
-            System.out.println(message.getText());
+            if (!username.equals(message.getSender())) {
+                System.out.println(message.getSender() + ":");
+                System.out.println(message.getText() + "\n");
+            }
         } else {
             User user = (User) obj;
-            System.out.println(user.getUsername() + " has joined the chat");
+            System.out.println(user.getUsername() + " has joined the chat\n");
         }
 
     }
